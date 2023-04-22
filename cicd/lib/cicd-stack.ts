@@ -25,7 +25,7 @@ export class CicdStack extends cdk.Stack {
         const fn = new lambda.Function(this, 'TodoFunction', {
             runtime: lambda.Runtime.PROVIDED_AL2,
             architecture: lambda.Architecture.X86_64,
-            code: lambda.Code.fromAsset('build'),
+            code: lambda.Code.fromAsset('../build'),
             handler: 'bootstrap',
             environment: {
                 'TODO_TABLE_NAME': table.tableName,
