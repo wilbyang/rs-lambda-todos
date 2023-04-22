@@ -4,7 +4,7 @@ import {Construct} from 'constructs';
 import * as dynamodb from 'aws-cdk-lib/aws-dynamodb';
 import * as lambda from 'aws-cdk-lib/aws-lambda';
 import * as apigw from 'aws-cdk-lib/aws-apigateway';
-
+import * as iam from 'aws-cdk-lib/aws-iam';
 export class CicdStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props);
@@ -20,6 +20,13 @@ export class CicdStack extends cdk.Stack {
         const table = new dynamodb.Table(this, 'TodoTable', {
             partitionKey: {name: 'id', type: dynamodb.AttributeType.STRING},
         });
+        const fnRole = new iam.Role(this, 'NewClicklinkCDCLambdaRole', {
+            assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
+        });
+        fnRole.addManagedPolicy(
+            iam.ManagedPolicy.fromAwsManagedPolicyName('service-role/AWSLambdaBasicExecutionRole')
+        );
+        table.grantReadWriteData(fnRole);
 
         // lambda resource
         const fn = new lambda.Function(this, 'TodoFunction', {
@@ -27,11 +34,12 @@ export class CicdStack extends cdk.Stack {
             architecture: lambda.Architecture.X86_64,
             code: lambda.Code.fromAsset('../build'),
             handler: 'bootstrap',
+            role: fnRole,
             environment: {
                 'TODO_TABLE_NAME': table.tableName,
             }
         });
-        table.grantReadWriteData(fn);
+
 
         const api = new apigw.RestApi(this, 'Api');
         const todos = api.root.addResource("todos");
