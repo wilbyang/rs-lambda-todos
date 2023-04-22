@@ -38,7 +38,7 @@ export class CicdStack extends cdk.Stack {
         todos.addMethod('GET', new apigw.LambdaIntegration(fn));
         todos.addMethod('POST', new apigw.LambdaIntegration(fn));
         //put
-        const todo = todos.addResource("todos/{id}");
+        const todo = todos.addResource("{id}");
         todo.addMethod('GET', new apigw.LambdaIntegration(fn));
         todo.addMethod('PUT', new apigw.LambdaIntegration(fn));
 
