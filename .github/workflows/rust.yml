@@ -17,6 +17,23 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      run: |
+        cargo build --release --target x86_64-unknown-linux-gnu
+        mkdir build
+        cp target/x86_64-unknown-linux-gnu/release/todos build/bootstrap
+    - name: set up nodejs
+      uses: actions/setup-node@v2
+      with:
+        node-version: 16
+    - name: Install CDK
+      run: |
+        cd cicd
+        npm ci
+    - name: Deploy with AWS CDK
+      run: |
+        cd cicd
+        npx cdk deploy --require-approval never
+      env:
+        AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ID }}
+        AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET }}
+        AWS_REGION: eu-west-1
