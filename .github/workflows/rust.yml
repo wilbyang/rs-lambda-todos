@@ -32,6 +32,7 @@ jobs:
     - name: Deploy with AWS CDK
       run: |
         cd cicd
+        npx cdk bootstrap aws://888213393963/eu-west-1
         npx cdk deploy --require-approval never
       env:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ID }}
