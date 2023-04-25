@@ -17,3 +17,5 @@ axum = { version = "0.6"}
 axum-aws-lambda = "0.4"
 lambda_http = "0.8"
 lambda_runtime = "0.8"
+rusoto_core = "0.48"
+rusoto_dynamodb = "0.48"

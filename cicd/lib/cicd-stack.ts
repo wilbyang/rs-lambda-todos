@@ -37,11 +37,13 @@ export class CicdStack extends cdk.Stack {
             role: fnRole,
             environment: {
                 'TODO_TABLE_NAME': table.tableName,
+                'AWS_REGION': "eu-west-1",
             }
         });
 
 
         const api = new apigw.RestApi(this, 'Api');
+        api.root.addMethod('GET', new apigw.LambdaIntegration(fn));
         const todos = api.root.addResource("todos");
         todos.addMethod('GET', new apigw.LambdaIntegration(fn));
         todos.addMethod('POST', new apigw.LambdaIntegration(fn));

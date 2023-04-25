@@ -1,22 +1,21 @@
+mod todos;
+
 use axum::{
     error_handling::HandleErrorLayer,
-    extract::{Extension, Path, Query},
+    extract::{Extension},
     http::StatusCode,
-    response::IntoResponse,
     routing::{get, patch},
-    Json, Router,
+    Router,
 };
-use serde::{Deserialize, Serialize};
 use std::{
-    collections::HashMap,
     net::SocketAddr,
-    sync::{Arc, RwLock},
     time::Duration,
 };
+use std::sync::Arc;
 use tower::{BoxError, ServiceBuilder};
 use tower_http::trace::TraceLayer;
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-use uuid::Uuid;
+use crate::todos::{DDBRepo, handlers::{todos_create, todos_delete, todos_index, todos_update}};
 
 #[tokio::main]
 async fn main() {
@@ -28,7 +27,7 @@ async fn main() {
         .with(tracing_subscriber::fmt::layer())
         .init();
 
-    let db = Db::default();
+    let db = Arc::new(DDBRepo::new());
 
     // Compose the routes
     let app = Router::new()
@@ -71,15 +70,10 @@ async fn main() {
 
         lambda_http::run(app).await.unwrap();
     }
-
 }
 
 // The query parameters for todos index
-#[derive(Debug, Deserialize, Default)]
-pub struct Pagination {
-    pub offset: Option<usize>,
-    pub limit: Option<usize>,
-}
+
 async fn root() -> &'static str {
     #[cfg(debug_assertions)]
     {
@@ -91,88 +85,18 @@ async fn root() -> &'static str {
     }
 }
 
-async fn todos_index(
-    pagination: Option<Query<Pagination>>,
-    Extension(db): Extension<Db>,
-) -> impl IntoResponse {
-    let todos = db.read().unwrap();
 
-    let Query(pagination) = pagination.unwrap_or_default();
 
-    let todos = todos
-        .values()
-        .skip(pagination.offset.unwrap_or(0))
-        .take(pagination.limit.unwrap_or(usize::MAX))
-        .cloned()
-        .collect::<Vec<_>>();
 
-    Json(todos)
-}
 
-#[derive(Debug, Deserialize)]
-struct CreateTodo {
-    text: String,
-}
 
-async fn todos_create(
-    Extension(db): Extension<Db>,
-    Json(input): Json<CreateTodo>,
-) -> impl IntoResponse {
-    let todo = Todo {
-        id: Uuid::new_v4(),
-        text: input.text,
-        completed: false,
-    };
 
-    db.write().unwrap().insert(todo.id, todo.clone());
 
-    (StatusCode::CREATED, Json(todo))
-}
 
-#[derive(Debug, Deserialize)]
-struct UpdateTodo {
-    text: Option<String>,
-    completed: Option<bool>,
-}
 
-async fn todos_update(
-    Extension(db): Extension<Db>,
-    Path(id): Path<Uuid>,
-    Json(input): Json<UpdateTodo>,
-) -> Result<impl IntoResponse, StatusCode> {
-    let mut todo = db
-        .read()
-        .unwrap()
-        .get(&id)
-        .cloned()
-        .ok_or(StatusCode::NOT_FOUND)?;
 
-    if let Some(text) = input.text {
-        todo.text = text;
-    }
 
-    if let Some(completed) = input.completed {
-        todo.completed = completed;
-    }
 
-    db.write().unwrap().insert(todo.id, todo.clone());
 
-    Ok(Json(todo))
-}
 
-async fn todos_delete(Extension(db): Extension<Db>, Path(id): Path<Uuid>) -> impl IntoResponse {
-    if db.write().unwrap().remove(&id).is_some() {
-        StatusCode::NO_CONTENT
-    } else {
-        StatusCode::NOT_FOUND
-    }
-}
 
-type Db = Arc<RwLock<HashMap<Uuid, Todo>>>;
-
-#[derive(Debug, Serialize, Clone)]
-struct Todo {
-    id: Uuid,
-    text: String,
-    completed: bool,
-}
